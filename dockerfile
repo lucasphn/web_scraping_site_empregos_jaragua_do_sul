@@ -4,14 +4,19 @@ FROM python:3.12
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt
 
-# Copia todo o conteúdo do diretório atual para o diretório /src no contêiner
-COPY . /src
+# Copia o script de inicialização para o contêiner
+COPY init.sh /init.sh
 
+# Define o script de inicialização como executável
+RUN chmod +x /init.sh
+
+# Copiando todos os arquivos para a pasta src
+COPY . /src
 # Define o diretório de trabalho como /src
 WORKDIR /src
 
 # Expõe a porta 8502 (se necessário)
 EXPOSE 8503
 
-# Comando de inicialização para executar o seu script Python
-CMD ["python", "main.py"]
+# Comando de inicialização para executar o script de inicialização
+CMD ["/bin/bash", "/init.sh"]

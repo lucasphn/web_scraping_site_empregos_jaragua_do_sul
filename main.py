@@ -7,7 +7,7 @@ def main():
     insert.start()
 
 # Agendando a execução nos horários desejados
-schedule.every().day.at("09:00").do(main)
+schedule.every().day.at("10:15").do(main)
 schedule.every().day.at("14:00").do(main)
 schedule.every().day.at("17:00").do(main)
 
