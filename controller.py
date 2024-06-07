@@ -6,9 +6,12 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
 from datetime import datetime
 import psycopg2
@@ -18,12 +21,15 @@ from dotenv import load_dotenv
 class ScrapingJob():
 
     def __init__(self):
-        self.options = webdriver.ChromeOptions()
+        self.options = Options()
+        #self.options = webdriver.ChromeOptions()
         self.options.add_argument('--ignore-certificate-errors')
         self.options.add_argument('--ignore-ssl-errors')
         self.options.add_argument('--headless') 
+        self.options.add_argument('--disable-dev-shm-usage')
         self.options.add_argument('--no-sandbox')
-        self.navegador = webdriver.Chrome(options=self.options)
+        #self.navegador = webdriver.Remote(options=self.options)
+        self.navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=self.options)
         self.url = 'https://jaraguadosulmaisempregos.santacatarinapelaeducacao.com.br/oportunidades?page=1'
         self.navegador.get(self.url) 
 
@@ -41,6 +47,7 @@ class ScrapingJob():
             'Logo da Empresa': str,
             'Saber Mais': str
         }
+        
         self.df:pd.DataFrame = None
         self.data = None
         self.num_pagina = list(range(1,26))
@@ -121,6 +128,7 @@ class ScrapingJob():
 
 
         file_path = 'oportunidade_de_empregos_' + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.xlsx'
+        # Salvando arquivo em Excel
         self.df.to_excel('data//' + file_path, index=False)
 
         return self.df
@@ -145,7 +153,7 @@ class InsertPostgress(ScrapingJob):
         return print('Tudo Finalizado')
         
     def salvando_dados_postgres(self):
-        self.my_dataframe.start().to_sql('tb_job', self.engine, if_exists='replace', index= False) 
+        self.my_dataframe.start().to_sql('empregos_jaragua_do_sul', self.engine, if_exists='replace', index= False) 
 
 
         
