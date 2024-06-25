@@ -15,7 +15,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
 from datetime import datetime
 import psycopg2
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Float, DateTime, Date, ForeignKey
+from sqlalchemy.sql import func
+from sqlalchemy.sql import delete
+from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 class ScrapingJob():
@@ -34,6 +37,7 @@ class ScrapingJob():
         self.navegador.get(self.url) 
 
         self.schema = {
+            'id': int,
             'Nome da Vaga': str,
             'Nome da Empresa': str,
             'Data Publicada': str,
@@ -118,6 +122,8 @@ class ScrapingJob():
                 'Saber Mais': self.saber_mais               
                 }
         self.df = pd.DataFrame(data)
+        self.df.reset_index(inplace=True)
+        self.df.rename(columns={'index': 'id'}, inplace=True)
 
         # Convertendo tipos de dados
         for column, dtype in self.schema.items():
@@ -126,7 +132,7 @@ class ScrapingJob():
         # Criando coluna que gerencia a data e horário de atualização
         self.df['Created At'] = datetime.now()
 
-
+        
         file_path = 'oportunidade_de_empregos_' + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.xlsx'
         # Salvando arquivo em Excel
         self.df.to_excel('data//' + file_path, index=False)
@@ -139,26 +145,62 @@ class InsertPostgress(ScrapingJob):
     def __init__(self):
         super().__init__()  # Chame o método __init__ da classe pai
         self.my_dataframe = ScrapingJob()
+    
+    def start(self):
+        self.credenciais()
+        self.definindo_schema_da_tabela()
+        self.deletando_dados_do_ultimo_web_scraping()
+        self.salvando_dados_postgres()
+        return print('Tudo Finalizado')
 
     def credenciais(self):
         # Carregar variáveis de ambiente
         load_dotenv()
         # Definindo variáveis de ambiente
         self.URL_DATABASE_POSTGRES = os.environ.get('URL_DATABASE_POSTGRES')
-        self.engine = create_engine(self.URL_DATABASE_POSTGRES) 
+        self.engine = create_engine(self.URL_DATABASE_POSTGRES)
+        self.Session =  sessionmaker(bind=self.engine)
+        self.session = self.Session()
     
-    def start(self):
-        self.credenciais()
-        self.salvando_dados_postgres()
-        return print('Tudo Finalizado')
-        
+    def definindo_schema_da_tabela(self):
+
+        # Nome da minha tabela
+        self.nome_da_tabela = 'scraping_empregos_jgua'
+
+        # Definir o esquema da tabela
+        self.meta = MetaData()
+
+        self.empregos_jaragua = Table(
+            self.nome_da_tabela, 
+            self.meta,
+            Column('id', Integer, primary_key = True, index = True),
+            Column('Nome da Vaga', String, index=True),
+            Column('Nome da Empresa', String, index=True),
+            Column('Data Publicada', String, index=True),
+            Column('Número de Vagas', String, index=True),
+            Column('Quantidade de Vagas', Integer, index=True),
+            Column('Senioridade', String, index=True),
+            Column('Formato de Disponibilidade', String, index=True),
+            Column('Área de Atuação', String, index=True),
+            Column('Cidade', String, index=True),
+            Column('Região', String, index=True),
+            Column('Logo da Empresa', String, index=True),
+            Column('Saber Mais', String, index=True),
+            Column('Created At', DateTime(timezone=True), default = func.now(), index=True)
+        )
+
+        # Criando a tabela se não existir
+        self.meta.create_all(self.engine, checkfirst=True)
+
+    def deletando_dados_do_ultimo_web_scraping(self):
+
+        # Deletando dados da tabela (caso exista)
+        self.delete_dados = delete(self.empregos_jaragua)
+        self.session.execute(self.delete_dados)
+        self.session.commit()
+        self.session.close()
+   
     def salvando_dados_postgres(self):
-        self.my_dataframe.start().to_sql('empregos_jaragua_do_sul', self.engine, if_exists='replace', index= False) 
+        self.my_dataframe.start().to_sql(self.nome_da_tabela, self.engine, if_exists='append', index= False) 
 
-
-        
-
-
-
-    
 

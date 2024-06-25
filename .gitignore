@@ -11,6 +11,10 @@ data/
 # C extensions
 *.so
 
+# files
+
+teste.py
+
 # Distribution / packaging
 .Python
 build/
